@@ -44,6 +44,14 @@ def get_NumberOfFriends(screen_name):
     request=twitter.request('users/lookup',{'screen_name':screen_name})
     user=[u for u in request][0]
     return user['friends_count']
+	
+def get_NumberofFollowers(screen_name): #<-------Esta es la que necesitamos
+	'''
+    returns the number of friends the user has 
+    '''    
+	request=twitter.request('users/lookup',{'screen_name':screen_name})
+	return request.json()[0]['followers_count']
+	
 
 def get_friends(screen_name,count=200):
     '''
