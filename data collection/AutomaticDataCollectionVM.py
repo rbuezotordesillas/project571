@@ -43,7 +43,7 @@ def get_NumberofFollowers(screen_name):       #does not crash when Exception, bu
   
 if __name__ == "__main__":
     #import accounts
-    accounts_df = pd.read_csv('~/DataVM1/accounts.csv',sep=";")
+    accounts_df = pd.read_csv('DataVM1/accounts.csv',sep=";")
     #collect data
     twitter = get_twitter()
     accounts = accounts_df['Account'] #pd series
@@ -52,8 +52,8 @@ if __name__ == "__main__":
     todaysFollowers[date] = np.NaN
     todaysFollowers[date] = todaysFollowers['Account'].apply(get_NumberofFollowers)
     #save Data
-    todaysFollowers.to_csv('~/DataVM1/todaysFollowers_'+date+'.csv',sep=';',index=False)
+    todaysFollowers.to_csv('DataVM1/todaysFollowers_'+date+'.csv',sep=';',index=False)
     ##add to historic data
-    historicData = pd.read_csv('~/DataVM1/todaysFollowers_all.csv',sep = ';') #load historic
+    historicData = pd.read_csv('DataVM1/todaysFollowers_all.csv',sep = ';') #load historic
     historicData = pd.concat([historicData,todaysFollowers[date]],axis=1) #add todays column
-    historicData.to_csv('~/DataVM1/todaysFollowers_all.csv',sep=';',index=False) #save
+    historicData.to_csv('DataVM1/todaysFollowers_all.csv',sep=';',index=False) #save
