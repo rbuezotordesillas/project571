@@ -1,3 +1,5 @@
+
+
 #!/bin/sh
 #cd "$Home/jmarti73/project57"
 
@@ -9,19 +11,23 @@ git remote add upstream https://github.com/rbuezotordesillas/project571.git
 
 git checkout virtualmachine
 
-sudo git add .
 
-echo Hello world
+echo TODO
+
+sudo git add .
 
 git commit -m "antoher day"
 
-#spawn git push origin virtualmachine
-#expect ""
-#send "jlmartinezmarin"
-#expect
-#interact
+spawn git push origin virtualmachine
+expect "Username for 'https://github.com':"
+send "jlmartinezmarin"
+expect "Password for 'https://jlmartinezmarin@github.com':"
+send "automatic8"
+interact
 
-git push origin virtualmachine
+echo DONE
+
+#git push origin virtualmachine
 
 
 
