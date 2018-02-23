@@ -15,13 +15,8 @@ echo Hello world
 
 git commit -m "antoher day"
 
-#spawn git push origin virtualmachine
-#expect ""
-#send "jlmartinezmarin"
-#expect
-#interact
+sudo git push origin virtualmachine
 
-git push origin virtualmachine
 
 
 
