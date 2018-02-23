@@ -18,12 +18,14 @@ sudo git add .
 
 git commit -m "antoher day"
 
-spawn git push origin virtualmachine
-expect "Username for 'https://github.com':"
-send "jlmartinezmarin"
-expect "Password for 'https://jlmartinezmarin@github.com':"
-send "automatic8"
-interact
+#spawn git push origin virtualmachine
+#expect "Username for 'https://github.com':"
+#send "jlmartinezmarin"
+#expect "Password for 'https://jlmartinezmarin@github.com':"
+#send ""
+#interact
+
+git push origin virtualmachine
 
 echo DONE
 
