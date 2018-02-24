@@ -25,7 +25,6 @@ git commit -m "antoher day"
 #send ""
 #interact
 
-sudo chmod 775 githubcalling.sh
 HOME=/home/jmarti73 sudo git push origin virtualmachine
 
 echo DONE
