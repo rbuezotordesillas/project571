@@ -25,7 +25,7 @@ git commit -m "antoher day"
 #send ""
 #interact
 
-git push origin virtualmachine
+HOME=/home/jmarti73 git push origin virtualmachine
 
 echo DONE
 
