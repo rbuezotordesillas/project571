@@ -78,7 +78,7 @@ if __name__ == '__main__':
     todaysTweets[date] = todaysTweets['Account'].apply(get_TodaysTweets)
     #Save Data
     todaysTweets_json = todaysTweets.to_json(orient='records')
-    with open('Data/todaysTweets_'+date,'w') as fp:
+    with open('Data/todaysTweets_'+date+'.json','w') as fp:
         json.dump(todaysTweets_json,fp)
     #Add to historic
         #TODO
