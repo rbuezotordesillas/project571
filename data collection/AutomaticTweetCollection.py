@@ -104,28 +104,28 @@ class progress_bar(object):
 # Main
 #==============================================================================
 if __name__ == '__main__':
-	print('Starting')
-    #Import Accounts
-    accounts_df = pd.read_csv('Data/accounts.csv',sep=";")
-    #Collect Data
-    twitter = get_twitter()
-    accounts = accounts_df['Account'] #pd series
-    todaysTweets = pd.DataFrame(accounts, columns=['Account'])
-    date=str(datetime.now().date())
-    todaysTweets[date] = np.NaN
-    pb = progress_bar(len(accounts_df))
-    print('Collecting Todays Tweets')
-    todaysTweets[date] = todaysTweets['Account'].apply(get_TodaysTweets)
-	print('Saving')
-    #Save Data
-    todaysTweets_json = todaysTweets.to_json(orient='records')
-    with open('Data/todaysTweets_'+date+'.json','w') as fp:
-        json.dump(todaysTweets_json,fp)
-    #Add to historic
-    with open('Data/todaysTweets_all.json','r') as fp: #load historic tweets
-        historicTweets_json = json.load(fp)
-    historicTweets = pd.read_json(historicTweets_json) #turn into pd.dataframe
-    historicTweets = pd.concat([historicTweets,todaysTweets[date]],axis=1) #concatenate
-    historicTweets_json = historicTweets.to_json(orient='records') #convert back to json
-    with open('Data/todaysTweets_all.json','w') as fp: #save
-        json.dump(historicTweets_json,fp)
+	print('Starting...')
+	#Import Accounts
+	accounts_df = pd.read_csv('Data/accounts.csv',sep=";")
+	#Collect Data
+	twitter = get_twitter()
+	accounts = accounts_df['Account'] #pd series
+	todaysTweets = pd.DataFrame(accounts, columns=['Account'])
+	date=str(datetime.now().date())
+	todaysTweets[date] = np.NaN
+	pb = progress_bar(len(accounts_df))
+	print('Collecting Todays Tweets')
+	todaysTweets[date] = todaysTweets['Account'].apply(get_TodaysTweets)
+	print('Saving...')
+	#Save Data
+	todaysTweets_json = todaysTweets.to_json(orient='records')
+	with open('Data/todaysTweets_'+date+'.json','w') as fp:
+		json.dump(todaysTweets_json,fp)
+	#Add to historic
+	with open('Data/todaysTweets_all.json','r') as fp: #load historic tweets
+		historicTweets_json = json.load(fp)
+	historicTweets = pd.read_json(historicTweets_json) #turn into pd.dataframe
+	historicTweets = pd.concat([historicTweets,todaysTweets[date]],axis=1) #concatenate
+	historicTweets_json = historicTweets.to_json(orient='records') #convert back to json
+	with open('Data/todaysTweets_all.json','w') as fp: #save
+		json.dump(historicTweets_json,fp)
