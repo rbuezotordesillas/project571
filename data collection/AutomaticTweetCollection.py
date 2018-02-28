@@ -121,11 +121,11 @@ if __name__ == '__main__':
 	todaysTweets_json = todaysTweets.to_json(orient='records')
 	with open('Data/todaysTweets_'+date+'.json','w') as fp:
 		json.dump(todaysTweets_json,fp)
-	#Add to historic
-	with open('Data/todaysTweets_all.json','r') as fp: #load historic tweets
-		historicTweets_json = json.load(fp)
-	historicTweets = pd.read_json(historicTweets_json) #turn into pd.dataframe
-	historicTweets = pd.concat([historicTweets,todaysTweets[date]],axis=1) #concatenate
-	historicTweets_json = historicTweets.to_json(orient='records') #convert back to json
-	with open('Data/todaysTweets_all.json','w') as fp: #save
-		json.dump(historicTweets_json,fp)
+	# #Add to historic
+	# with open('Data/todaysTweets_all.json','r') as fp: #load historic tweets
+		# historicTweets_json = json.load(fp)
+	# historicTweets = pd.read_json(historicTweets_json) #turn into pd.dataframe
+	# historicTweets = pd.concat([historicTweets,todaysTweets[date]],axis=1) #concatenate
+	# historicTweets_json = historicTweets.to_json(orient='records') #convert back to json
+	# with open('Data/todaysTweets_all.json','w') as fp: #save
+		# json.dump(historicTweets_json,fp)
