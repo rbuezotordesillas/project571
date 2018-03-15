@@ -9,7 +9,7 @@ git init
 
 git remote add upstream https://github.com/rbuezotordesillas/project571.git
 
-git checkout virtualmachine
+git checkout vmfiles
 
 
 echo TODO
@@ -25,7 +25,7 @@ git commit -m "antoher day"
 #send ""
 #interact
 
-HOME=/home/jmarti73 sudo git push origin virtualmachine
+HOME=/home/jmarti73 sudo git push origin vmfiles
 
 echo DONE
 
