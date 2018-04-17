@@ -1,27 +1,41 @@
 
-tweets <- read.csv('../data collection/Data/ModelData/historicTweets.csv',header = T,stringsAsFactors = F,sep = ';',na.strings = 'Null')
+myData <- read.csv('../data collection/Data/ModelData/modelData.csv',header = T,stringsAsFactors = F,sep = ';',na.strings = 'Null')
 accounts <- read.csv('../data collection/Data/ModelData/accountsComplete.csv',header = T,stringsAsFactors = F,sep = ';')
-followers<- read.csv('../data collection/Data/ModelData/historicFollowers.csv',header = T,stringsAsFactors = F,sep = ';',na.strings = 'Null')
 
-tweets[is.na(tweets)] <- 0
+missing <- tapply(myData$nTweets,myData$Account,function(x) sum(is.na(x))) 
+missing[missing != 0]
 
-
-#library(dplyr)
-tweetsPerCategory <- merge(tweets,accounts,by = 'Account',sort = F)
-tweetsPerCategory <- select(tweetsPerCategory,-location)
+#TODO pensar que hacer con estas cuentas
+myData[is.na(myData)] <- 0
 
 
-#library(ggplot2)
-#library(reshape)
-tweetGraph <- melt(tweetsPerCategory,id = c('Account','Category'))
-names(tweetGraph) <- c('Account','Category','Date','nTweets')
+library(dplyr)
+fullData <- merge(myData,accounts,by = 'Account',sort = F)
+fullData <- select(fullData,-location)
+
+
+library(lubridate)
+
+formatdate <- function(d){
+  d <- as.character(d)
+  d <- gsub('X','',d)
+  d <- gsub('\\.','-',d)
+  return(d)
+}
+
+
+fullData$date <- apply(fullData['date'],formatdate,MARGIN = 1)
+fullData$date <- ymd(fullData$date)
+fullData['DoW'] <- wday(fullData$date,label = TRUE)
+fullData['IsWeekend'] <- ifelse(fullData$DoW %in% c('Sat','Sun'),1,0)
+fullData$IsWeekend <- as.factor(fullData$IsWeekend)
 
 
 #tweetsEvolution_all.pdf
 
 pdf('tweetsEvolution_all.pdf',paper = 'USr',width = 11,height=8.5)
 
-ggplot(data = tweetGraph, aes(x=Date,y=nTweets,group = Account))+
+ggplot(data = fullData, aes(x=date,y=nTweets,group = Account))+
   geom_line(aes(color=Account))+
   theme(axis.text.x=element_blank(),
         axis.ticks.x=element_blank(),
@@ -32,11 +46,11 @@ dev.off()
 
 
 
-tweetGraph <- tweetGraph[tweetGraph$Account != 'TV_TradingIdeas',]
+fullData <- fullData[fullData$Account != 'TV_TradingIdeas',]
 
 pdf('tweetsEvolution_noOutlier.pdf',paper = 'USr',width = 11,height=8.5)
 
-ggplot(data = tweetGraph, aes(x=Date,y=nTweets,group = Account))+
+ggplot(data = fullData, aes(x=date,y=nTweets,group = Account))+
   geom_line(aes(color=Account))+
   theme(axis.text.x=element_blank(),
         axis.ticks.x=element_blank(),
@@ -47,7 +61,7 @@ dev.off()
 
 pdf('tweetsEvolution_noOutlier_freeY.pdf',paper = 'USr',width = 11,height=8.5)
 
-ggplot(data = tweetGraph, aes(x=Date,y=nTweets,group = Account))+
+ggplot(data = fullData, aes(x=date,y=nTweets,group = Account))+
   geom_line(aes(color=Account))+
   theme(axis.text.x=element_blank(),
         axis.ticks.x=element_blank(),
@@ -57,3 +71,58 @@ ggplot(data = tweetGraph, aes(x=Date,y=nTweets,group = Account))+
 dev.off()
 
 
+#Seasonality analysis
+
+pdf('WeekEnd_seasonality.pdf',paper = 'USr',width = 11,height=8.5)
+
+ggplot(data = fullData, aes(factor(0),nTweets,group = IsWeekend))+
+  geom_boxplot(aes(colour = IsWeekend))+
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank())+
+  facet_wrap(~Category)
+dev.off()
+
+pdf('WeekEnd_seasonality_freeY.pdf',paper = 'USr',width = 11,height=8.5)
+ggplot(data = fullData, aes(factor(0),nTweets,group = IsWeekend))+
+  geom_boxplot(aes(colour = IsWeekend))+
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank())+
+  facet_wrap(~Category, scales = "free_y")
+dev.off()
+
+#Followers
+
+pdf('followersEvolution_freeY.pdf',paper = 'USr',width = 11,height=8.5)
+ggplot(data = fullData, aes(x=date,y=Followers,group = Account))+
+  geom_line(aes(color=Account))+
+  theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        legend.position = 'none')+
+  facet_wrap(~Category,scales = "free_y")
+
+dev.off()
+
+#TODO include Tv-... ?
+initialData <- fullData[fullData$date == fullData$date[1],]
+
+ggplot(initialData, aes(x = Followers)) +
+  geom_histogram()
+
+ggplot(initialData, aes(factor(0),Followers)) +
+  geom_boxplot()
+
+View(initialData[c('Account','Followers')])
+
+
+
+
+
+
+
+
+ggplot(data = test, aes(x=date,y=Followers,group = Account))+
+  geom_line(aes(color=Account))+
+  theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        legend.position = 'none')+
+  facet_wrap(~Category)
