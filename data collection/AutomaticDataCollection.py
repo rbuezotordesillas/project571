@@ -11,17 +11,29 @@ import pandas as pd
 from datetime import datetime
 
 #Functions
+def getPasswords():
+    file = open('passwords.txt','r')
+    passwords_json = file.read()
+    return json.loads(passwords_json)
+
 def get_twitter():
     """ 
     Generates twitter connection
     """
+    passwords = getPasswords()
     
-    #Tokens
+    consumer_key = passwords['consumer_key']
+    consumer_secret = passwords['consumer_secret']
+    access_token = passwords['access_token']
+    access_token_secret = passwords['access_token_secret']
+    
+    #Set Tokens
+    '''
     consumer_key='nDx2bQS2DVdXEZd0b8MwaEG2L'
     consumer_secret='BeA1VuBq7hyi01fo4LFD13YAcrDgeYxIJTQgzx4gg8H5fSc3FR'
     access_token='900568210424164352-pKLEmPfNcqyGi3q67pyK3bJYtc5G01S'
     access_token_secret='uGbegX9whUY0FjZS6tgIrDITVOM8Q6tKMODNVPG2sT9Aq'
-    
+    '''
     
     twitter = TwitterAPI(
                    consumer_key,
