@@ -40,7 +40,7 @@ data[, "category"]<-"a"
 data$category[which(data$Account==account$Account)]<-account$Category
 data$category<-as.factor(data$category)
 
-#Regression Model
+#REGRESSION MODEL
 #MODEL------------------------------------------------------------------------------------------------------
 #We start observing the data
 index<-which(complete.cases(data)==FALSE)
@@ -53,7 +53,6 @@ xVars <- names(datano)
 xVars <- xVars[-8]
 xVars <- xVars[-1]
 xVars <- xVars[-9]
-#xVars <- xVars[-7] #removing Followers
 targetVar <-  "change_followers"
 
 createModelFormula <- function(targetVar, xVars, includeIntercept = TRUE){
@@ -101,3 +100,86 @@ summary(model)
 
 smodel<-step(model, direction="both")
 summary(smodel)
+
+## Removing the accounts that have NAs 
+i<-which((data$Account=="sportbible")|(data$Account=="fabulousanimals")|(data$Account=="Earth_Pics"))
+removeData<-data[-i, ]
+
+xVars <- names(removeData)
+xVars <- xVars[-8]
+xVars <- xVars[-1]
+xVars <- xVars[-9]
+
+targetVar <-  "change_followers"
+
+createModelFormula <- function(targetVar, xVars, includeIntercept = TRUE){
+  if(includeIntercept){
+    modelForm <- as.formula(paste(targetVar, "~", paste(xVars, collapse = '+ ')))
+  } else {
+    modelForm <- as.formula(paste(targetVar, "~", paste(xVars, collapse = '+ '), -1))
+  }
+  return(modelForm)
+}
+
+#sum(datawithoutNULL$change_followers>0)
+
+# Let's divide into training and testing
+
+set.seed(1234)
+inTrain <- createDataPartition(y = removeData[,targetVar], list = FALSE, p = 0.8)
+train <- removeData[inTrain,]
+test <- removeData[-inTrain,]
+stopifnot(nrow(train) + nrow(test) == nrow(removeData))
+sum(train$change_followers)/nrow(train)
+sum(test$change_followers)/nrow(test)
+
+modelForm <- createModelFormula(targetVar = targetVar, xVars = xVars, includeIntercept = TRUE)
+model <- lm(modelForm, data = train)
+summary(model)
+
+pred<-predict(model, test)
+pred<-as.data.frame(pred)
+pred[, "actual"]<-test[, "change_followers"]
+RSE<-sum((pred[,"actual"]-pred[, "pred"])**2)
+ymean<-mean(test[, "change_followers"])
+Rtot<-sum((test[, "change_followers"]-ymean)**2)
+R_squared<-1-(RSE/Rtot)
+cat("The value of the R squared for the test is", R_squared)
+
+smodel<-step(model, direction="both")
+summary(smodel)
+
+#Correlation 
+library('corrplot')
+num<-removeData[, -12]
+num<-num[, -8]
+num<-num[,-1]
+corMatrix <- cor(num)
+corrplot(corMatrix, method = 'number', diag = TRUE)
+
+#LOGISTIC REGRESSION
+
+#We are going to create a variable 1-Increase 0-Decrease or stayed the same
+
+removeData[, "logic_change"]<-0
+removeData$logic_change[which(removeData$change_followers>0)]<-1
+
+ind<-createDataPartition(y=removeData$logic_change, list=FALSE, p=0.8)
+train<-removeData[ind,]
+test<-removeData[-ind,]
+stopifnot(nrow(train) + nrow(test) == nrow(removeData))
+
+modelForm <- createModelFormula(targetVar = "logic_change", xVars = xVars, includeIntercept = TRUE)
+
+logmodel<-glm(modelForm, family=binomial(link='logit'), data=train)
+summary(logmodel)
+
+logpred<-predict(logmodel, test, type="response")
+#Now we set a parameter to measure what we consider as a "Yes" and what we consider as "No"
+threshold<-0.5
+defaulted<-rep(0, length(test$logic_change))
+defaulted[logpred>threshold]<-1
+defaulted<-as.logical(defaulted)
+table(defaulted, test$logic_change)
+
+mean(test$logic_change)
