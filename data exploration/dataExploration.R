@@ -165,8 +165,11 @@ ggplot(data=graphDF, aes(x=followers,y=change))+
 library(cluster)
 library(factoextra)
 
+pdf('ClusterErrors.pdf',paper = 'USr',width = 11,height=8.5)
 fviz_nbclust(graphDF, kmeans, method="wss")
-k <- kmeans(graphDF, centers=5)
+dev.off()
+
+k <- kmeans(graphDF, centers=4)
 
 pdf('Clusters.pdf',paper = 'USr',width = 11,height=8.5)
 fviz_cluster(k, data=graphDF)
