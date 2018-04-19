@@ -69,6 +69,8 @@ corrplot(corMatrix, method = 'number', diag = TRUE)
 #TODO: If you put the change_followers as percentage it shows that there is no correlation
 #with the number of followers
 
+cat('The maximum daily increase that we get is: ', max(data_clean$change_followers), '%\n')
+
 #-----------------------------------------------------------------------------------------------
   #MODELS
 #-----------------------------------------------------------------------------------------------
@@ -312,7 +314,7 @@ anova(model, lmStep, lm.int, lmReduced.int) #The results of this show that the t
 #anova(model, lm.int) #lm.int best model so far
 
 #------------------------------------------------------------------------------------------
-#Polynomic Regression
+#Polynomial Regression
 #Now we are going to see if the model satisfies the linear assumption
 
 #First we are going to choose the order of the polynomial regression and then we are going to 
@@ -346,23 +348,46 @@ anova(model, pol.reg2, pol.reg3, pol.reg4, pol.reg5)
 #TODO: look for the full explanation
 
 #TODO: choose best coefficients looking at the p-value, automatically?¿
+#TODO: get only the numbers at the end of the name by using grepl put them in a dataframe 
+#& compare
 p<-summary(pol.reg4)$coefficients[,4]
 alpha<-0.05
 candidates<-p[p<alpha]
 
 #TODO: The best model
 #The best model would be: 
-pol.reg.pruned<-lm(change_followers ~ category + poly(pURLs, pMedia, degree=2, raw=TRUE) + 
-                     nTweets*pMentions+ pHashtags + pHashtags:pMentions + nTweets:pURLs+
-                     pHashtags:pURLs+ pURLs:pMentions + pHashtags:pMedia +
-                     pMedia:pMentions + pURLs:pRTs + pMedia:pRTs + pRTs, train)
-summary(pol.reg.pruned)
+# pol.reg.pruned<-lm(change_followers ~ category + poly(pURLs, pMedia, degree=2, raw=TRUE) +
+#                      nTweets*pMentions+ pHashtags + pHashtags:pMentions + nTweets:pURLs+
+#                      pHashtags:pURLs+ pURLs:pMentions + pHashtags:pMedia +
+#                      pMedia:pMentions + pURLs:pRTs + pMedia:pRTs + pRTs, train)
+# summary(pol.reg.pruned)
 
-#TODO: regression splines (if I have time)
+#TODO: prediction!!
+
+#TODO: regression splines, maybe exponential (if I have time)
 
 #------------------------------------------------------------------------------------------
 #Regression Tree
+library(rpart)
+library(rpart.plot)
 
+reg.tree<-rpart(modelForm, data=train)
+summary(reg.tree)
+rpart.plot(reg.tree, type=4, digits=4 , main="Full Regression Tree")
+
+reg.tree.pred<-predict(reg.tree, test)
+#plot(reg.tree.pred, test$change_followers)
+#TODO: plot in the rest?
+reg.mse<-mean((reg.tree.pred-test$change_followers)**2)
+cat('The mse of this model is: ', reg.mse)
+#TODO: explanation
+#it leads to test predictions that are within 0.19% of the median percentage
+
+# reg.treev2<-tree(modelForm, data=train)
+# summary(reg.treev2)
+# to get the median
+
+#TODO: pruning + randomForest
 
 
 
