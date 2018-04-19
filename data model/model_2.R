@@ -13,16 +13,14 @@ data[, "date"]<-as.Date(data[, "date"])
 library('lubridate')
 day<-wday(data[,"date"], week_start=1) #starts on Monday
 data[, "isWeekend"]<-0
-data$isWeekend[which(day>=5)]<-1 #We consider that the weekend starts on Friday
+data$isWeekend[which(day>=6)]<-1 #Friday=5/Saturday=6
+#TODO: discuss, works better when it is Friday...
 
 
 #Create variable change in number of followers
-
-#TODO: remove the line that gets the number of followers for 23/02 when we put these values in the 
-#modelData.csv
 followers<- read.csv('../data collection/Data/ModelData/historicFollowers.csv',header = T,stringsAsFactors = F,sep = ';',na.strings = 'Null')
 data[, "change_followers"]<-0
-data$change_followers[which(data$date=="2018-02-24")]<-data$Followers[which(data$date=="2018-02-24")]-followers$X2018.02.23
+data$change_followers[which(data$date=="2018-02-24")]<-(data$Followers[which(data$date=="2018-02-24")]-followers$X2018.02.23)/followers$X2018.02.23
 
 #TODO: change this when we have all the data
 startday <-  data$date[1]
@@ -30,8 +28,10 @@ endday <- data$date[nrow(data)]
 
 a1 <- data$Followers[which((data$date> (startday-1)) & (data$date< endday))]
 b1 <- data$Followers[which((data$date> startday) & (data$date<(endday+1)))]
-data$change_followers[data$date>startday] <- b1 - a1
+data$change_followers[data$date>startday] <- ((b1 - a1)/a1)*100
+#We have made this as a percentage
 
+#TODO: acceleration of increase in followers instead of velocity
 
 #We create a category column
 account<-read.csv('../data collection/Data/ModelData/accountsComplete.csv', header = T,stringsAsFactors = F,sep = ';',na.strings = 'Null')
@@ -42,7 +42,7 @@ data$category<-as.factor(data$category)
 
 #We remove the Accounts that have NAs
 i<-which((data$Account=="sportbible")|(data$Account=="fabulousanimals")|(data$Account=="Earth_Pics"))
-cat('The percentage of removed data is:', (length(i)/dim(data)[1])*100) #So we can delete them
+cat('The percentage of removed data is:', (length(i)/dim(data)[1])*100, '\n') #So we can delete them
 data_clean<-data[-i, ]
 
 #-----------------------------------------------------------------------------------------------
@@ -66,7 +66,8 @@ corrplot(corMatrix, method = 'number', diag = TRUE)
 #From this matrix we see that the values show no relevant linear correlation except for pRTs and
 #pMentions and Followers with change_followers
 
-#TODO: Modify this in the models
+#TODO: If you put the change_followers as percentage it shows that there is no correlation
+#with the number of followers
 
 #-----------------------------------------------------------------------------------------------
   #MODELS
@@ -146,7 +147,7 @@ summary(logmodel2)
 #Applying stepwise selection we get that the best model is 
 #logic_change ~ category + pMentions + pURLs + pMedia + nTweets + isWeekend
 #This makes sense as pRTs was highly correlated to pMentions
-#Hastags are simply not importan 
+#Hashtags are simply not important 
 
 #Prediction:
 logpred2<-predict(logmodel2, test, type="response")
@@ -192,10 +193,13 @@ sum(test$change_followers)/nrow(test)
 modelForm <- createModelFormula(targetVar = targetVar, xVars = xVars, includeIntercept = TRUE)
 model <- lm(modelForm, data = train)
 summary(model)
+plot(model)
+#TODO: investigate how to export them automatically to a file
 
 #If we use Followers we have a R_squared of 0.54 for both the training and the test
 #If we don't use it, we have a R_squared of 0.2234
 cat('The adjusted r squared is: ', summary(model)$adj.r.squared)
+#change in %:0.0239
 
 #Prediction:
 pred<-predict(model, test)
@@ -212,22 +216,28 @@ RsquaredLM<-function(pred, test, targetVar){
 }
 R_squared<-RsquaredLM(pred, test, targetVar)
 cat("The value of the R squared for the test is", R_squared)
-
 #We get an R_squared of 0.2077
+#change as percentage: 0.0184
+
 
 #From the p-values we see that we can remove the nTweets
-xVars<-xVars[-(which(numVar=="nTweets"))]
-modelForm <- createModelFormula(targetVar = targetVar, xVars = xVars, includeIntercept = TRUE)
-model2 <- lm(modelForm, data = train)
-summary(model2)
-cat('The adjusted r squared is: ', summary(model2)$adj.r.squared) #0.2236
+#TODO: if in % we don't remove nTweets
 
-pred2<-predict(model2, test)
-R_squared2<-RsquaredLM(pred2, test, targetVar)
-cat("The value of the R squared for the test is", R_squared2)
-#We get the same R squared as before
+# xVars<-xVars[-(which(numVar=="nTweets"))]
+# modelForm <- createModelFormula(targetVar = targetVar, xVars = xVars, includeIntercept = TRUE)
+# model2 <- lm(modelForm, data = train)
+# summary(model2)
+# cat('The adjusted r squared is: ', summary(model2)$adj.r.squared) #0.2236
+# #change in followers as percentage: 0.0235
+# plot(model2)
+# 
+# pred2<-predict(model2, test)
+# R_squared2<-RsquaredLM(pred2, test, targetVar)
+# cat("The value of the R squared for the test is", R_squared2)
+# #We get the same R squared as before
+# #change %: 0.0180
+#TODO: if I use this don't forget to introduce nTweets in xVars if I create new formulas with it
 
-#plot(model2)
 #TODO: EXPLANATION OF THE PLOTS 
 
 #Stepwise Selection
@@ -237,20 +247,82 @@ full_lm<-lm(modelForm, data=train)
 lmStep<-step(simple_lm, direction="both", scope=list(upper=full_lm, lower=simple_lm))
 summary(lmStep)
 cat('The adjusted r squared is: ', summary(lmStep)$adj.r.squared) #0.2236
+plot(lmStep)
+#change in %: 0.02438
 #summary(lmStep)$call
+
 #We get the same formula as the previous case
+#change in %: change_followers ~ category + pMedia + pRTs + pURLs
 
-#If I remove pRTs I get worse model
+anova(model, lmStep)
+#TODO: explanation when all the data is loaded
+#TODO: maybe remove this cause it is going to be explained with all the models
+#We compare the two models. The null hypothesis is that the two models fit the data equally
+#and the alternative is that lmStep is better. The p-value is 0.91 which means that we
+#fail to reject the null hypothesis. If we look at the r squared is practically the same, being
+#the one for the first model slightly better
 
-#TODO: look this fuction better
-#back<-ols_step_backward_aic(model, details=TRUE)
 
-#TODO: Ridge & Lasso (& Naive ?)
+#TODO: Ridge & Lasso
 
 #Standarization of the variables
+#TODO: change_followers as a percentage
+
+
+#TODO: PCA
+
+#------------------------------------------------------------------------------------------
+#Interaction Terms
+
+#When we did the correlation matrix we found that there is a high correlation between pRTs and 
+#pMentions
+variables<-xVars[-(which((xVars=="pRTs")|(xVars=="pMentions")))]
+newModel<-as.formula(paste(targetVar, "~", paste(variables, collapse = '+ '), "+","pRTs*pMentions"))
+
+lm.int<-lm(newModel, train)
+summary(lm.int)
+cat('The adjusted r squared is: ', summary(lm.int)$adj.r.squared)
+#change %: 0.02896
+#The p-value for this new term is really low which indicates that there is a clear relationship
+#which is not additive. This means that the changes in the predictor pRTs is related to the change
+#in pMentions
+
+plot(lm.int)
+pred3<-predict(lm.int, test)
+R_squared3<-RsquaredLM(pred3, test, targetVar)
+cat("The value of the R squared for the test is", R_squared3)
+#change in %: 0.01909
+
+#TODO: ALL OF THIS IS DONE BY HAND, DO A FUNCTION
+#I use an alpha of 0.5 to choose the p-values maybe too high
+lmReduced.int<-lm(change_followers~nTweets + pURLs+ pMedia+ category+pRTs*pMentions, data=train)
+summary(lmReduced.int)
+cat('The adjusted r squared is: ', summary(lmReduced.int)$adj.r.squared)
+#change in %:0.02929
+
+plot(lmReduced.int)
+pred4<-predict(lmReduced.int, test)
+R_squared4<-RsquaredLM(pred4, test, targetVar)
+cat("The value of the R squared for the test is", R_squared4)
+#0.01875
+
+#TODO: anova comparison of all the regression models?
+anova(model, lmStep, lm.int, lmReduced.int) #The results of this show that the third model is much better than the first
+#anova(model, lm.int) #lm.int best model so far
+
+#------------------------------------------------------------------------------------------
+#Polynomic Model
+
 
 
 
 
 #------------------------------------------------------------------------------------------
-#Polynomic Model
+#Regression Tree
+
+
+
+
+#------------------------------------------------------------------------------------------
+#ARIMA
+
