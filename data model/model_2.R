@@ -28,8 +28,8 @@ endday <- data$date[nrow(data)]
 
 a1 <- data$Followers[which((data$date> (startday-1)) & (data$date< endday))]
 b1 <- data$Followers[which((data$date> startday) & (data$date<(endday+1)))]
-data$change_followers[data$date>startday] <- ((b1 - a1)/a1)*100
-#We have made this as a percentage
+data$change_followers[data$date>startday] <- (b1 - a1)/a1
+#This is a change in followers (decimal)
 
 #TODO: acceleration of increase in followers instead of velocity
 
@@ -69,7 +69,7 @@ corrplot(corMatrix, method = 'number', diag = TRUE)
 #TODO: If you put the change_followers as percentage it shows that there is no correlation
 #with the number of followers
 
-cat('The maximum daily increase that we get is: ', max(data_clean$change_followers), '%\n')
+cat('The maximum daily increase that we get is: ', max(data_clean$change_followers)*100, '%\n')
 
 #-----------------------------------------------------------------------------------------------
   #MODELS
@@ -253,6 +253,9 @@ plot(lmStep)
 #change in %: 0.02438
 #summary(lmStep)$call
 
+lmStep.pred<-predict(lmStep, data=test)
+R_squaredStep<-RsquaredLM(pred, test, targetVar)
+cat("The value of the R squared for the test is", R_squaredStep)
 #We get the same formula as the previous case
 #change in %: change_followers ~ category + pMedia + pRTs + pURLs
 
@@ -279,7 +282,8 @@ anova(model, lmStep)
 
 #When we did the correlation matrix we found that there is a high correlation between pRTs and 
 #pMentions
-variables<-xVars[-(which((xVars=="pRTs")|(xVars=="pMentions")))]
+
+#change in %: 0.01909variables<-xVars[-(which((xVars=="pRTs")|(xVars=="pMentions")))]
 newModel<-as.formula(paste(targetVar, "~", paste(variables, collapse = '+ '), "+","pRTs*pMentions"))
 
 lm.int<-lm(newModel, train)
@@ -294,7 +298,6 @@ plot(lm.int)
 pred3<-predict(lm.int, test)
 R_squared3<-RsquaredLM(pred3, test, targetVar)
 cat("The value of the R squared for the test is", R_squared3)
-#change in %: 0.01909
 
 #TODO: ALL OF THIS IS DONE BY HAND, DO A FUNCTION
 #I use an alpha of 0.5 to choose the p-values maybe too high
@@ -325,22 +328,34 @@ anova(model, lmStep, lm.int, lmReduced.int) #The results of this show that the t
 pol.reg2<-lm(change_followers ~ category +polym(nTweets, pHashtags, pMentions, pURLs, pMedia, pRTs, isWeekend, degree=2, raw=TRUE), data=train)
 #summary(pol.reg2)
 #cat('The adjusted r squared is: ', summary(pol.reg2)$adj.r.squared)
+pol.reg2.pred<-predict(pol.reg2, test)
+R_squared.pol2<-RsquaredLM(pol.reg2.pred, test, targetVar)
+cat("The value of the R squared for the test is", R_squared.pol2)
 
 #order 3
 pol.reg3<-lm(change_followers ~ category +polym(nTweets, pHashtags, pMentions, pURLs, pMedia, pRTs, isWeekend, degree=3, raw=TRUE), data=train)
 #summary(pol.reg3)
 #cat('The adjusted r squared is: ', summary(pol.reg3)$adj.r.squared)
+pol.reg3.pred<-predict(pol.reg2, test)
+R_squared.pol3<-RsquaredLM(pol.reg3.pred, test, targetVar)
+cat("The value of the R squared for the test is", R_squared.pol3)
 
-#order 4
-pol.reg4<-lm(change_followers ~ category +polym(nTweets, pHashtags, pMentions, pURLs, pMedia, pRTs, isWeekend, degree=4, raw=TRUE), data=train)
-#summary(pol.reg4)
-#cat('The adjusted r squared is: ', summary(pol.reg4)$adj.r.squared)
 
-#order 5
-pol.reg5<-lm(change_followers ~ category +polym(nTweets, pHashtags, pMentions, pURLs, pMedia, pRTs, isWeekend, degree=5, raw=TRUE), data=train)
-#summary(pol.reg5)
-#cat('The adjusted r squared is: ', summary(pol.reg5)$adj.r.squared)
+# #order 4
+# pol.reg4<-lm(change_followers ~ category +polym(nTweets, pHashtags, pMentions, pURLs, pMedia, pRTs, isWeekend, degree=4, raw=TRUE), data=train)
+# #summary(pol.reg4)
+# #cat('The adjusted r squared is: ', summary(pol.reg4)$adj.r.squared)
+# pol.reg4.pred<-predict(pol.reg2, test)
+# R_squared.pol4<-RsquaredLM(pol.reg4.pred, test, targetVar)
+# cat("The value of the R squared for the test is", R_squared.pol4)
+# 
+# 
+# #order 5
+# pol.reg5<-lm(change_followers ~ category +polym(nTweets, pHashtags, pMentions, pURLs, pMedia, pRTs, isWeekend, degree=5, raw=TRUE), data=train)
+# #summary(pol.reg5)
+# #cat('The adjusted r squared is: ', summary(pol.reg5)$adj.r.squared)
 
+#TODO: change this
 anova(model, pol.reg2, pol.reg3, pol.reg4, pol.reg5)
 #We compare it with the "basic" model to choose the order of the polynomial
 #It is unusual to take values higher than 3/4 because the curve can become over flexible. So,
@@ -354,15 +369,18 @@ p<-summary(pol.reg4)$coefficients[,4]
 alpha<-0.05
 candidates<-p[p<alpha]
 
-#TODO: The best model
+#TODO: The best model polynomial order 2
 #The best model would be: 
-# pol.reg.pruned<-lm(change_followers ~ category + poly(pURLs, pMedia, degree=2, raw=TRUE) +
-#                      nTweets*pMentions+ pHashtags + pHashtags:pMentions + nTweets:pURLs+
-#                      pHashtags:pURLs+ pURLs:pMentions + pHashtags:pMedia +
-#                      pMedia:pMentions + pURLs:pRTs + pMedia:pRTs + pRTs, train)
-# summary(pol.reg.pruned)
+pol.reg.pruned<-lm(change_followers ~ category + poly(pURLs, pMedia, degree=2, raw=TRUE) +
+                     nTweets*pMentions+ pHashtags + pHashtags:pMentions + nTweets:pURLs+
+                     pHashtags:pURLs+ pURLs:pMentions + pHashtags:pMedia +
+                     pMedia:pMentions + pURLs:pRTs + pMedia:pRTs + pRTs, train)
+summary(pol.reg.pruned)
 
-#TODO: prediction!!
+pol.reg.pruned.pred<-predict(pol.reg.pruned, test)
+R_squared.pol.pruned<-RsquaredLM(pol.reg.pruned.pred, test, targetVar)
+cat("The value of the R squared for the test is", R_squared.pol.pruned)
+
 
 #TODO: regression splines, maybe exponential (if I have time)
 
@@ -370,6 +388,7 @@ candidates<-p[p<alpha]
 #Regression Tree
 library(rpart)
 library(rpart.plot)
+#library(tree)
 
 reg.tree<-rpart(modelForm, data=train)
 summary(reg.tree)
@@ -382,14 +401,31 @@ reg.mse<-mean((reg.tree.pred-test$change_followers)**2)
 cat('The mse of this model is: ', reg.mse)
 #TODO: explanation
 #it leads to test predictions that are within 0.19% of the median percentage
+#TODO: makes sense to use R_squared?
+
 
 # reg.treev2<-tree(modelForm, data=train)
 # summary(reg.treev2)
 # to get the median
 
-#TODO: pruning + randomForest
+#TODO: Pruning
+#We are going to start by pruning the de decision tree: 
+#We want to apply cross validation to determine the optimal level of the tree complexity.
 
-
+#We set the parameters of the train function
+# trctrl <- trainControl(method = "repeatedcv", number = 10, repeats = 3)
+# fit3CV<- train(x = train[, xVars]
+#                , y = train[, targetVar]
+#                , method = "rpart",
+#                # This is telling caret to test 20 options of the
+#                # hyperparameters (tuning variables) for this
+#                # model. Supposedly caret should know for rpart
+#                # what variables to tune. In practice, bugs are
+#                # aplenty!
+#                tuneLength=20,metric="RMSE", trControl = trctrl)
+# fit<-fit3CV$finalModel
+# plot(fit)
+# text(fit, pretty=0)
 
 #------------------------------------------------------------------------------------------
 #ARIMA
