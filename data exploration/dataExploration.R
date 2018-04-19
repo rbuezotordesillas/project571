@@ -178,6 +178,7 @@ dev.off()
 c <- k$cluster
 
 df <- data.frame(Account=names(c),Cluster=c)
+# write.csv(df, file="\AccountClusters.csv")
 
 merged <- merge(fullDataOrdered, df, by='Account', all.x = TRUE)
 stopifnot(nrow(fullDataOrdered)==nrow(merged))
