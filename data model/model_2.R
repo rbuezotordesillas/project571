@@ -273,6 +273,7 @@ anova(model, lmStep)
 
 #------------------------------------------------------------------------------------------
 #Interaction Terms
+#We are going to investigate whether the model satisfies the additive assumption
 
 #When we did the correlation matrix we found that there is a high correlation between pRTs and 
 #pMentions
@@ -311,11 +312,53 @@ anova(model, lmStep, lm.int, lmReduced.int) #The results of this show that the t
 #anova(model, lm.int) #lm.int best model so far
 
 #------------------------------------------------------------------------------------------
-#Polynomic Model
+#Polynomic Regression
+#Now we are going to see if the model satisfies the linear assumption
 
+#First we are going to choose the order of the polynomial regression and then we are going to 
+#choose the optimal variables
 
+#TODO: investigate further, it doesn't allow me to introduce category to the quadratic equation
+#order 2
+pol.reg2<-lm(change_followers ~ category +polym(nTweets, pHashtags, pMentions, pURLs, pMedia, pRTs, isWeekend, degree=2, raw=TRUE), data=train)
+#summary(pol.reg2)
+#cat('The adjusted r squared is: ', summary(pol.reg2)$adj.r.squared)
 
+#order 3
+pol.reg3<-lm(change_followers ~ category +polym(nTweets, pHashtags, pMentions, pURLs, pMedia, pRTs, isWeekend, degree=3, raw=TRUE), data=train)
+#summary(pol.reg3)
+#cat('The adjusted r squared is: ', summary(pol.reg3)$adj.r.squared)
 
+#order 4
+pol.reg4<-lm(change_followers ~ category +polym(nTweets, pHashtags, pMentions, pURLs, pMedia, pRTs, isWeekend, degree=4, raw=TRUE), data=train)
+#summary(pol.reg4)
+#cat('The adjusted r squared is: ', summary(pol.reg4)$adj.r.squared)
+
+#order 5
+pol.reg5<-lm(change_followers ~ category +polym(nTweets, pHashtags, pMentions, pURLs, pMedia, pRTs, isWeekend, degree=5, raw=TRUE), data=train)
+#summary(pol.reg5)
+#cat('The adjusted r squared is: ', summary(pol.reg5)$adj.r.squared)
+
+anova(model, pol.reg2, pol.reg3, pol.reg4, pol.reg5)
+#We compare it with the "basic" model to choose the order of the polynomial
+#It is unusual to take values higher than 3/4 because the curve can become over flexible. So,
+#we choose order 4
+#TODO: look for the full explanation
+
+#TODO: choose best coefficients looking at the p-value, automatically?¿
+p<-summary(pol.reg4)$coefficients[,4]
+alpha<-0.05
+candidates<-p[p<alpha]
+
+#TODO: The best model
+#The best model would be: 
+pol.reg.pruned<-lm(change_followers ~ category + poly(pURLs, pMedia, degree=2, raw=TRUE) + 
+                     nTweets*pMentions+ pHashtags + pHashtags:pMentions + nTweets:pURLs+
+                     pHashtags:pURLs+ pURLs:pMentions + pHashtags:pMedia +
+                     pMedia:pMentions + pURLs:pRTs + pMedia:pRTs + pRTs, train)
+summary(pol.reg.pruned)
+
+#TODO: regression splines (if I have time)
 
 #------------------------------------------------------------------------------------------
 #Regression Tree
