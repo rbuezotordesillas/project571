@@ -122,13 +122,6 @@ View(initialData[c('Account','Followers')])
 
 
 
-ggplot(data = test, aes(x=date,y=Followers,group = Account))+
-  geom_line(aes(color=Account))+
-  theme(axis.text.x=element_blank(),
-        axis.ticks.x=element_blank(),
-        legend.position = 'none')+
-  facet_wrap(~Category)
-
 
 
 # Messing around to get pChange in followers vs. Followers to bin 
@@ -138,17 +131,18 @@ fullDataOrdered <- fullData[order(fullData$date),]
 startday <-  fullData$date[1]
 endday <- fullData$date[nrow(fullData)]
 
-fullDataOrdered$change_followers[which(fullDataOrdered$date=="2018-02-24")]<-fullDataOrdered$Followers[which(fullDataOrdered$date=="2018-02-24")]-followers$X2018.02.23
+fullDataOrdered$pChange_followers[which(fullDataOrdered$date=="2018-02-24")]<-((fullDataOrdered$Followers[which(fullDataOrdered$date=="2018-02-24")]-followers$X2018.02.23)/followers$X2018.02.23)*100
 
 a1 <- fullDataOrdered$Followers[which((fullDataOrdered$date> (startday-1)) & (fullDataOrdered$date< endday))]
 b1 <- fullDataOrdered$Followers[which((fullDataOrdered$date> startday) & (fullDataOrdered$date<(endday+1)))]
-fullDataOrdered$change_followers[fullDataOrdered$date>startday] <- b1 - a1
+fullDataOrdered$pChange_followers[fullDataOrdered$date>startday] <- (b1 - a1)/a1*100
 
 avgFollowers <- tapply(fullDataOrdered$Followers, fullDataOrdered$Account, mean)
-avgChange <- tapply(fullDataOrdered$change_followers, fullDataOrdered$Account, mean)
+avgpChange <- tapply(fullDataOrdered$pChange_followers, fullDataOrdered$Account, mean)
 
-graphDF <- data.frame(change=avgChange, followers=avgFollowers)
-
+graphDF <- data.frame(followers=avgFollowers, change=avgpChange)
+graphDF<-graphDF[complete.cases(graphDF),]
+summary(graphDF)
 # d1 <- fullData$date[1]
 # d2 <- d1+1
 # 
@@ -163,7 +157,33 @@ graphDF <- data.frame(change=avgChange, followers=avgFollowers)
 # g <- data.frame(change=pChangeFirst, followers=followerFirst)
 # g2 <- data.frame(change=change, followers=followerFirst)
 
+library(ggplot2)
 ggplot(data=graphDF, aes(x=followers,y=change))+
   geom_point(stat="identity")+
-  ylim(-50000,25000)
+  xlim(0,7.5e6)
 
+library(cluster)
+library(factoextra)
+
+fviz_nbclust(graphDF, kmeans, method="wss")
+k <- kmeans(graphDF, centers=5)
+
+pdf('Clusters.pdf',paper = 'USr',width = 11,height=8.5)
+fviz_cluster(k, data=graphDF)
+dev.off()
+
+c <- k$cluster
+
+df <- data.frame(Account=names(c),Cluster=c)
+
+merged <- merge(fullDataOrdered, df, by='Account', all.x = TRUE)
+stopifnot(nrow(fullDataOrdered)==nrow(merged))
+
+pdf('followersEvolution2_freeY.pdf',paper = 'USr',width = 11,height=8.5)
+ggplot(data = merged, aes(x=date,y=Followers,group = Account))+
+  geom_line(aes(color=Category))+
+  theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        legend.position = 'none')+
+  facet_wrap(~Cluster,scales = "free_y")
+dev.off()
