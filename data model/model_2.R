@@ -1,6 +1,9 @@
 #setwd("C:/Users/Carru/SoftwareRepositories/project571/data model")
 data<-read.csv('../data collection/Data/ModelData/modelData.csv', header=T, sep=";", na.strings='Null')
 
+###TODO: SET SEED AS A GLOBAL VARIABLE!!!
+
+
 #We start observing the data
 index<-which(complete.cases(data)==FALSE)
 #data[index, ]
@@ -44,6 +47,20 @@ data$category<-as.factor(data$category)
 i<-which((data$Account=="sportbible")|(data$Account=="fabulousanimals")|(data$Account=="Earth_Pics"))
 cat('The percentage of removed data is:', (length(i)/dim(data)[1])*100, '\n') #So we can delete them
 data_clean<-data[-i, ]
+
+#We introduce another column that partitions the accounts into groups depending on their size
+# clusterpartition<-read.csv('../data exploration/AccountClusters.csv', header=T, stringsAsFactors = F, sep=',', na.strings='Null')
+# clusterpartition$X<-NULL
+# 
+# library('sqldf')
+# sqlStr<-'SELECT * 
+#         FROM data_clean INNER JOIN clusterpartition ON data_clean.Account== clusterpartition.Account'
+# data_clean<-sqldf(sqlStr)
+# data_clean<-data_clean[,-13]
+# 
+# #TODO: label the clusters
+# #TODO: ask what each number represents
+# data_clean$Cluster<-as.factor(data_clean$Cluster)
 
 #-----------------------------------------------------------------------------------------------
 #Correlation between variables
@@ -217,7 +234,7 @@ RsquaredLM<-function(pred, test, targetVar){
   R_squared<-1-(RSE/Rtot)
 }
 R_squared<-RsquaredLM(pred, test, targetVar)
-cat("The value of the R squared for the test is", R_squared)
+cat("The value of the R squared for the test is", R_squared, "\n")
 #We get an R_squared of 0.2077
 #change as percentage: 0.0184
 
@@ -248,14 +265,14 @@ simple_lm<-lm(change_followers ~ 1, data=train)
 full_lm<-lm(modelForm, data=train)
 lmStep<-step(simple_lm, direction="both", scope=list(upper=full_lm, lower=simple_lm))
 summary(lmStep)
-cat('The adjusted r squared is: ', summary(lmStep)$adj.r.squared) #0.2236
+cat('The adjusted r squared is: ', summary(lmStep)$adj.r.squared, "\n") #0.2236
 plot(lmStep)
 #change in %: 0.02438
 #summary(lmStep)$call
 
 lmStep.pred<-predict(lmStep, data=test)
 R_squaredStep<-RsquaredLM(pred, test, targetVar)
-cat("The value of the R squared for the test is", R_squaredStep)
+cat("The value of the R squared for the test is", R_squaredStep, "\n")
 #We get the same formula as the previous case
 #change in %: change_followers ~ category + pMedia + pRTs + pURLs
 
@@ -288,7 +305,7 @@ newModel<-as.formula(paste(targetVar, "~", paste(variables, collapse = '+ '), "+
 
 lm.int<-lm(newModel, train)
 summary(lm.int)
-cat('The adjusted r squared is: ', summary(lm.int)$adj.r.squared)
+cat('The adjusted r squared is: ', summary(lm.int)$adj.r.squared, "\n")
 #change %: 0.02896
 #The p-value for this new term is really low which indicates that there is a clear relationship
 #which is not additive. This means that the changes in the predictor pRTs is related to the change
@@ -297,7 +314,7 @@ cat('The adjusted r squared is: ', summary(lm.int)$adj.r.squared)
 plot(lm.int)
 pred3<-predict(lm.int, test)
 R_squared3<-RsquaredLM(pred3, test, targetVar)
-cat("The value of the R squared for the test is", R_squared3)
+cat("The value of the R squared for the test is", R_squared3, "\n")
 
 #TODO: ALL OF THIS IS DONE BY HAND, DO A FUNCTION
 #I use an alpha of 0.5 to choose the p-values maybe too high
@@ -309,7 +326,7 @@ cat('The adjusted r squared is: ', summary(lmReduced.int)$adj.r.squared)
 plot(lmReduced.int)
 pred4<-predict(lmReduced.int, test)
 R_squared4<-RsquaredLM(pred4, test, targetVar)
-cat("The value of the R squared for the test is", R_squared4)
+cat("The value of the R squared for the test is", R_squared4, "\n")
 #0.01875
 
 #TODO: anova comparison of all the regression models?
@@ -330,7 +347,7 @@ pol.reg2<-lm(change_followers ~ category +polym(nTweets, pHashtags, pMentions, p
 #cat('The adjusted r squared is: ', summary(pol.reg2)$adj.r.squared)
 pol.reg2.pred<-predict(pol.reg2, test)
 R_squared.pol2<-RsquaredLM(pol.reg2.pred, test, targetVar)
-cat("The value of the R squared for the test is", R_squared.pol2)
+cat("The value of the R squared for the test is", R_squared.pol2, "\n")
 
 #order 3
 pol.reg3<-lm(change_followers ~ category +polym(nTweets, pHashtags, pMentions, pURLs, pMedia, pRTs, isWeekend, degree=3, raw=TRUE), data=train)
@@ -338,7 +355,7 @@ pol.reg3<-lm(change_followers ~ category +polym(nTweets, pHashtags, pMentions, p
 #cat('The adjusted r squared is: ', summary(pol.reg3)$adj.r.squared)
 pol.reg3.pred<-predict(pol.reg2, test)
 R_squared.pol3<-RsquaredLM(pol.reg3.pred, test, targetVar)
-cat("The value of the R squared for the test is", R_squared.pol3)
+cat("The value of the R squared for the test is", R_squared.pol3, "\n")
 
 
 # #order 4
@@ -356,7 +373,7 @@ cat("The value of the R squared for the test is", R_squared.pol3)
 # #cat('The adjusted r squared is: ', summary(pol.reg5)$adj.r.squared)
 
 #TODO: change this
-anova(model, pol.reg2, pol.reg3, pol.reg4, pol.reg5)
+anova(model, pol.reg2)
 #We compare it with the "basic" model to choose the order of the polynomial
 #It is unusual to take values higher than 3/4 because the curve can become over flexible. So,
 #we choose order 4
@@ -379,7 +396,7 @@ summary(pol.reg.pruned)
 
 pol.reg.pruned.pred<-predict(pol.reg.pruned, test)
 R_squared.pol.pruned<-RsquaredLM(pol.reg.pruned.pred, test, targetVar)
-cat("The value of the R squared for the test is", R_squared.pol.pruned)
+cat("The value of the R squared for the test is", R_squared.pol.pruned, "\n")
 
 
 #TODO: regression splines, maybe exponential (if I have time)
@@ -393,39 +410,36 @@ library(rpart.plot)
 reg.tree<-rpart(modelForm, data=train)
 summary(reg.tree)
 rpart.plot(reg.tree, type=4, digits=4 , main="Full Regression Tree")
+#There is no need to prune since we can see that the tree chose 5 levels and that has the lowest error.
 
 reg.tree.pred<-predict(reg.tree, test)
 #plot(reg.tree.pred, test$change_followers)
 #TODO: plot in the rest?
+
 reg.mse<-mean((reg.tree.pred-test$change_followers)**2)
-cat('The mse of this model is: ', reg.mse)
+cat('The mse of this model is: ', reg.mse, "\n")
 #TODO: explanation
 #it leads to test predictions that are within 0.19% of the median percentage
 #TODO: makes sense to use R_squared?
 
 
-# reg.treev2<-tree(modelForm, data=train)
-# summary(reg.treev2)
-# to get the median
-
-#TODO: Pruning
+#TODO: Pruning -> REMOVE
 #We are going to start by pruning the de decision tree: 
 #We want to apply cross validation to determine the optimal level of the tree complexity.
+# cpx<-reg.tree$cptable[which.min(reg.tree$cptable[,"xerror"]), "CP"]
+# pruned.tree<-prune(reg.tree, cp=cpx)
+# rpart.plot(reg.tree, type=4, digits=4 , main="Pruned Regression Tree")
 
-#We set the parameters of the train function
-# trctrl <- trainControl(method = "repeatedcv", number = 10, repeats = 3)
-# fit3CV<- train(x = train[, xVars]
-#                , y = train[, targetVar]
-#                , method = "rpart",
-#                # This is telling caret to test 20 options of the
-#                # hyperparameters (tuning variables) for this
-#                # model. Supposedly caret should know for rpart
-#                # what variables to tune. In practice, bugs are
-#                # aplenty!
-#                tuneLength=20,metric="RMSE", trControl = trctrl)
-# fit<-fit3CV$finalModel
-# plot(fit)
-# text(fit, pretty=0)
+#Random Forest
+
+library(randomForest)
+#set.seed()
+rf.tree<-randomForest(modelForm, data=train, importance=T)
+rf.pred<-predict(rf.tree, data=test)
+print(rf.tree)
+
+mtry<-tuneRF(x=train[,xVars], y=train[, targetVar], ntreeTry = 500, stepFactor = 1.5, improve=0.01, trace=TRUE, plot=TRUE)
+#TODO: tune the randomForest, nodes, number of trees and number of variables tried at each level
 
 #------------------------------------------------------------------------------------------
 #ARIMA
