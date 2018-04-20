@@ -435,11 +435,14 @@ cat('The mse of this model is: ', reg.mse, "\n")
 library(randomForest)
 #set.seed()
 rf.tree<-randomForest(modelForm, data=train, importance=T)
+
 rf.pred<-predict(rf.tree, data=test)
 print(rf.tree)
-
 mtry<-tuneRF(x=train[,xVars], y=train[, targetVar], ntreeTry = 500, stepFactor = 1.5, improve=0.01, trace=TRUE, plot=TRUE)
-#TODO: tune the randomForest, nodes, number of trees and number of variables tried at each level
+#Since mtry is still 2 which is what it is used to create the randomForest we don't have to create a new one
+#TODO: I don't change ntree because it is sufficient for the number of observations ¿? change it?
+rf.mse<-mean((rf.pred-test$change_followers)**2)
+cat('The mse of this model is: ', rf.mse, "\n")
 
 #------------------------------------------------------------------------------------------
 #ARIMA
