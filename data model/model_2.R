@@ -1,8 +1,7 @@
 #setwd("C:/Users/Carru/SoftwareRepositories/project571/data model")
-data<-read.csv('../data collection/Data/ModelData/modelData.csv', header=T, sep=";", na.strings='Null')
+data<-read.csv('../data collection/Data/ModelData/modelData.csv', header=T, sep=";", na.strings='Null', stringsAsFactors = F)
 
 ###TODO: SET SEED AS A GLOBAL VARIABLE!!!
-
 
 #We start observing the data
 index<-which(complete.cases(data)==FALSE)
@@ -49,18 +48,26 @@ cat('The percentage of removed data is:', (length(i)/dim(data)[1])*100, '\n') #S
 data_clean<-data[-i, ]
 
 #We introduce another column that partitions the accounts into groups depending on their size
-# clusterpartition<-read.csv('../data exploration/AccountClusters.csv', header=T, stringsAsFactors = F, sep=',', na.strings='Null')
-# clusterpartition$X<-NULL
-# 
-# library('sqldf')
-# sqlStr<-'SELECT * 
-#         FROM data_clean INNER JOIN clusterpartition ON data_clean.Account== clusterpartition.Account'
-# data_clean<-sqldf(sqlStr)
-# data_clean<-data_clean[,-13]
-# 
+clusterpartition<-read.csv('../data exploration/AccountClusters.csv', header=T, stringsAsFactors = F, sep=',', na.strings='Null')
+clusterpartition$X<-NULL
+
+library('sqldf')
+sqlStr<-'SELECT *
+        FROM data_clean INNER JOIN clusterpartition ON data_clean.Account== clusterpartition.Account'
+data_clean<-sqldf(sqlStr)
+data_clean<-data_clean[,-13]
+
 # #TODO: label the clusters
 # #TODO: ask what each number represents
-# data_clean$Cluster<-as.factor(data_clean$Cluster)
+data_clean$Cluster<-factor(data_clean$Cluster, levels=c(1,2,3,4))
+
+#We are going to create a variable 1-Increase 0-Decrease or stayed the same
+data_clean[, "logic_change"]<-0
+data_clean$logic_change[which(data_clean$change_followers>0)]<-1
+data_clean$logic_change<-as.logical(data_clean$logic_change)
+
+#Scaling the attribute Followers
+#data_clean$Followers<-scale(data_clean$Followers)
 
 #-----------------------------------------------------------------------------------------------
 #Correlation between variables
@@ -70,43 +77,52 @@ type<-function(a, funct){
   }else{
     return(names(which(sapply(a, funct))))
   }
-}  
+}
+charVar<-type(data_clean, is.character)
 numVar<-type(data_clean, is.numeric)
 catVar<-type(data_clean, is.factor)
 dateVar<-type(data_clean, is.Date)
-stopifnot((length(numVar)+length(catVar)+length(dateVar))==ncol(data_clean))
+logicVar<-type(data_clean, is.logical)
+stopifnot((length(numVar)+length(catVar)+length(dateVar)+length(logicVar))+length(charVar)==ncol(data_clean))
 
 
 library('corrplot')
 corMatrix <- cor(data_clean[, numVar])
 corrplot(corMatrix, method = 'number', diag = TRUE)
 #From this matrix we see that the values show no relevant linear correlation except for pRTs and
-#pMentions and Followers with change_followers
+#pMentions
 
-#TODO: If you put the change_followers as percentage it shows that there is no correlation
-#with the number of followers
+#Spliting the data 
 
-cat('The maximum daily increase that we get is: ', max(data_clean$change_followers)*100, '%\n')
+#We are going to train on the 80% of the data, being this data the first 80% of the days we captured the data. The remaining 20% will be used as the test data.
+numberDays<-as.integer(endday-startday)
+totalDays<-unique(data_clean$date)
+lastTrain<-ceiling(0.8*numberDays)
+lastTrainDate<-totalDays[lastTrain]
+indexLast<-max(which(data_clean$date==lastTrainDate))
+
+train<-data_clean[1:indexLast, ]
+test<-data_clean[(indexLast+1):nrow(data_clean),]
+stopifnot(nrow(train)+nrow(test)==nrow(data_clean))
+
+cat('In the training data we have ', mean(train$logic_change)*100, '% of the followers increase\n')
+cat('In the test data we have ', mean(test$logic_change)*100, '% of the followers increase\n')
 
 #-----------------------------------------------------------------------------------------------
   #MODELS
 #-----------------------------------------------------------------------------------------------
 #Logistic Regression Model
   
-#We are going to create a variable 1-Increase 0-Decrease or stayed the same
-data_clean[, "logic_change"]<-0
-data_clean$logic_change[which(data_clean$change_followers>0)]<-1
-
 #We use stratified sampling to divide the data into training and test
 library('lattice')
 library('ggplot2')
 library('caret')
 
-set.seed(1234)
-ind<-createDataPartition(y=data_clean$logic_change, list=FALSE, p=0.8)
-train<-data_clean[ind,]
-test<-data_clean[-ind,]
-stopifnot(nrow(train) + nrow(test) == nrow(data_clean))
+# set.seed(1234)
+# ind<-createDataPartition(y=data_clean$logic_change, list=FALSE, p=0.8)
+# train<-data_clean[ind,]
+# test<-data_clean[-ind,]
+# stopifnot(nrow(train) + nrow(test) == nrow(data_clean))
 
 createModelFormula <- function(targetVar, xVars, includeIntercept = TRUE){
   if(includeIntercept){
@@ -118,11 +134,10 @@ createModelFormula <- function(targetVar, xVars, includeIntercept = TRUE){
 }
 
 #TODO: Remove highly correlated variables?
-#TODO: Introduce the groups replacing the followers
 xVars<-numVar[-(which(numVar=="change_followers"))]
 xVars<-xVars[-(which(numVar=="Followers"))] #We remove Followers because it was highly correlated
-xVars<-c(xVars, "category")
-response<-"logic_change"
+xVars<-c(xVars, catVar)
+response<-logicVar
 modelForm <- createModelFormula(targetVar = response, xVars = xVars, includeIntercept = TRUE)
 
 logmodel<-glm(modelForm, family=binomial(link='logit'), data=train)
@@ -135,14 +150,14 @@ logpred<-predict(logmodel, test, type="response")
 threshold<-0.5
 defaulted<-rep(0, length(test$logic_change))
 defaulted[logpred>threshold]<-1
-
+defaulted<-as.logical(defaulted)
 
 mean(test$logic_change) 
 #86% of our data corresponds to an increase of the number of followers, so there is a clear 
 #class imbalance
 confusionMatrix(defaulted, test$logic_change)
-#Our model has 86,% of probability of correctly saying whether it's going to increase or not
-#so, it's not better than the default setting.
+#Our model has 87% of probability of correctly saying whether it's going to increase or not
+#so, it's a bit better than the default setting.
 
 #Since there is a clear class imbalance in our data set, there is a huge difference 
 #between Specificity & Sensitivity
@@ -164,17 +179,17 @@ summary(logmodel2)
 
 #logmodel2$formula
 #Applying stepwise selection we get that the best model is 
-#logic_change ~ category + pMentions + pURLs + pMedia + nTweets + isWeekend
+#logic_change ~ category + pMentions + Cluster + pURLs + pMedia + nTweets + isWeekend + pRTs
 #This makes sense as pRTs was highly correlated to pMentions
-#Hashtags are simply not important 
 
 #Prediction:
 logpred2<-predict(logmodel2, test, type="response")
 threshold<-0.5
 defaulted2<-rep(0, length(test$logic_change))
 defaulted2[logpred2>threshold]<-1
+defaulted2<-as.logical(defaulted2)
 confusionMatrix(defaulted2, test$logic_change)
-#No changes between both models, we get the same results
+#No changes between both models, we get the same results. So this model would be better since we use less variables, simpler model
 #No change in the graph either
 
 # #Lasso Regression:
@@ -202,13 +217,47 @@ confusionMatrix(defaulted2, test$logic_change)
 targetVar <-  "change_followers"
 
 #We have to partition the data again, since now we have a different targetVar
-inTrain <- createDataPartition(y = data_clean[,targetVar], list = FALSE, p = 0.8)
-train <- data_clean[inTrain,]
-test <- data_clean[-inTrain,]
-stopifnot(nrow(train) + nrow(test) == nrow(data_clean))
-sum(train$change_followers)/nrow(train)
-sum(test$change_followers)/nrow(test)
+# inTrain <- createDataPartition(y = data_clean[,targetVar], list = FALSE, p = 0.8)
+# train <- data_clean[inTrain,]
+# test <- data_clean[-inTrain,]
+# stopifnot(nrow(train) + nrow(test) == nrow(data_clean))
+# sum(train$change_followers)/nrow(train)
+# sum(test$change_followers)/nrow(test)
 
+#Relationship between followers and change in followers (change in followers as in variation)
+simple_data<-data
+simple_data$change_followers[which(data$date=="2018-02-24")]<-simple_data$change_followers[which(data$date=="2018-02-24")]*followers$X2018.02.23
+simple_data$change_followers[simple_data$date>startday]<-simple_data$change_followers[simple_data$date>startday]*a1
+simple_data<-simple_data[-i, c('Followers', 'change_followers')]
+
+train2<-simple_data[1:indexLast,]
+test2<-data_clean[(indexLast+1):nrow(data_clean),]
+stopifnot(nrow(train2)+nrow(test2)==nrow(data_clean))
+
+modelFollower<-lm(change_followers~Followers, data=train2)
+summary(modelFollower)
+
+predFollower<-predict(modelFollower, test2)
+#The following function calculates the R_squared of the prediction
+RsquaredLM<-function(pred, test, targetVar){
+  pred<-as.data.frame(pred)
+  n<-as.character(names(pred))
+  pred[, "actual"]<-test[, targetVar]
+  RSE<-sum((pred[,"actual"]-pred[, n])**2)
+  ymean<-mean(test[, targetVar])
+  Rtot<-sum((test[, targetVar]-ymean)**2)
+  R_squared<-1-(RSE/Rtot)
+}
+#TODO: check this, I get negative value (?)
+R_squaredF<-RsquaredLM(predFollower, test2, targetVar) 
+
+ggplot(simple_data, aes(x = Followers, y = change_followers))+ geom_point() + 
+  geom_abline(intercept=2.126e+02, slope=2.921e-04,color='red') + 
+  ggtitle("Relation between Followers and change in followers") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  labs(x="Followers", y="change_followers")
+
+#Model including all variables and change_followers as absolute change
 modelForm <- createModelFormula(targetVar = targetVar, xVars = xVars, includeIntercept = TRUE)
 model <- lm(modelForm, data = train)
 summary(model)
@@ -222,17 +271,6 @@ cat('The adjusted r squared is: ', summary(model)$adj.r.squared)
 
 #Prediction:
 pred<-predict(model, test)
-
-#The following function calculates the R_squared of the prediction
-RsquaredLM<-function(pred, test, targetVar){
-  pred<-as.data.frame(pred)
-  n<-as.character(names(pred))
-  pred[, "actual"]<-test[, targetVar]
-  RSE<-sum((pred[,"actual"]-pred[, n])**2)
-  ymean<-mean(test[, targetVar])
-  Rtot<-sum((test[, targetVar]-ymean)**2)
-  R_squared<-1-(RSE/Rtot)
-}
 R_squared<-RsquaredLM(pred, test, targetVar)
 cat("The value of the R squared for the test is", R_squared, "\n")
 #We get an R_squared of 0.2077
@@ -300,7 +338,8 @@ anova(model, lmStep)
 #When we did the correlation matrix we found that there is a high correlation between pRTs and 
 #pMentions
 
-#change in %: 0.01909variables<-xVars[-(which((xVars=="pRTs")|(xVars=="pMentions")))]
+#change in %: 0.01909
+variables<-xVars[-(which((xVars=="pRTs")|(xVars=="pMentions")))]
 newModel<-as.formula(paste(targetVar, "~", paste(variables, collapse = '+ '), "+","pRTs*pMentions"))
 
 lm.int<-lm(newModel, train)
@@ -405,7 +444,6 @@ cat("The value of the R squared for the test is", R_squared.pol.pruned, "\n")
 #Regression Tree
 library(rpart)
 library(rpart.plot)
-#library(tree)
 
 reg.tree<-rpart(modelForm, data=train)
 summary(reg.tree)
