@@ -55,3 +55,27 @@ MATCH (t:Tweet)
 MATCH r1=(user:User)-[:POSTS]->(t)<-[:TAGS]-(tag:Hashtag) WHERE user.accountName IN ['Newsweek','CNN', 'BBCWorld', 'NBCNews','nytimes','ABC','FoxNews', 'washingtonpost','WSJ', 'Reuters', 'el_pais', 'abc_es', 'antena3com', 'noticias_cuatro', '24h_tve']
 MATCH r2=(t)-[:MENTIONS]->(user2:Mentioned)  
 RETURN r1,r2
+
+
+## Hashtag exploration analysis
+
+# Most used hashtags and their count
+
+MATCH ()<-[t:TAGS]-(h:Hashtag)
+RETURN h.HT as HASHTAG,count(t) as COUNT
+ORDER BY COUNT DESC
+
+
+# See who used this hashtag
+
+MATCH (u:User)-[p:POSTS]->()<-[:TAGS]-(h:Hashtag{HT:'metoo'})
+RETURN u.accountName AS Account, count(p) AS Count
+ORDER BY Count DESC
+
+# by category
+
+MATCH (u:User{category:'Fashion'})-[:POSTS]->()<-[t:TAGS]-(h:Hashtag)
+RETURN h.HT as HASHTAG,count(t) as COUNT
+ORDER BY COUNT DESC
+
+

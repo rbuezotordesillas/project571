@@ -3,7 +3,7 @@
 
 # First, set working directory to Source File Location
 
-myData <- read.csv('../data collection/Data/ModelData/modelData.csv',header = T,stringsAsFactors = F,sep = ';',na.strings = 'Null')
+myData <- read.csv('../data collection/Data/ModelData/modelData2.csv',header = T,stringsAsFactors = F,sep = ';',na.strings = 'Null')
 accounts <- read.csv('../data collection/Data/ModelData/accountsComplete.csv',header = T,stringsAsFactors = F,sep = ';')
 followers<- read.csv('../data collection/Data/ModelData/historicFollowers.csv',header = T,stringsAsFactors = F,sep = ';',na.strings = 'Null')
 
@@ -120,42 +120,27 @@ View(initialData[c('Account','Followers')])
 
 
 
-
-
-
-
-# Messing around to get pChange in followers vs. Followers to bin 
+# Bin followers to create categorical variable for type of account: small, medium, large, huge
 
 fullDataOrdered <- fullData[order(fullData$date),]
+dataTrain <- fullDataOrdered[which(fullDataOrdered$date<="2018-04-09"),]
 
 startday <-  fullData$date[1]
 endday <- fullData$date[nrow(fullData)]
 
-fullDataOrdered$pChange_followers[which(fullDataOrdered$date=="2018-02-24")]<-((fullDataOrdered$Followers[which(fullDataOrdered$date=="2018-02-24")]-followers$X2018.02.23)/followers$X2018.02.23)*100
+dataTrain$pChange_followers[which(dataTrain$date=="2018-02-24")]<-((dataTrain$Followers[which(dataTrain$date=="2018-02-24")]-followers$X2018.02.23)/followers$X2018.02.23)*100
 
-a1 <- fullDataOrdered$Followers[which((fullDataOrdered$date> (startday-1)) & (fullDataOrdered$date< endday))]
-b1 <- fullDataOrdered$Followers[which((fullDataOrdered$date> startday) & (fullDataOrdered$date<(endday+1)))]
-fullDataOrdered$pChange_followers[fullDataOrdered$date>startday] <- (b1 - a1)/a1*100
+a1 <- dataTrain$Followers[which((dataTrain$date> (startday-1)) & (dataTrain$date< endday))]
+b1 <- dataTrain$Followers[which((dataTrain$date> startday) & (dataTrain$date<(endday+1)))]
+dataTrain$pChange_followers[dataTrain$date>startday] <- (b1 - a1)/a1*100
 
-avgFollowers <- tapply(fullDataOrdered$Followers, fullDataOrdered$Account, mean)
-avgpChange <- tapply(fullDataOrdered$pChange_followers, fullDataOrdered$Account, mean)
+avgFollowers <- tapply(dataTrain$Followers, dataTrain$Account, mean)
+avgpChange <- tapply(dataTrain$pChange_followers, dataTrain$Account, mean)
 
 graphDF <- data.frame(followers=avgFollowers, change=avgpChange)
 graphDF<-graphDF[complete.cases(graphDF),]
 summary(graphDF)
-# d1 <- fullData$date[1]
-# d2 <- d1+1
-# 
-# fullDataOrdered <- fullData[order(fullData$date),]
-# 
-# pChangeFirst <- (fullDataOrdered$Followers[fullDataOrdered$date==d2]-fullDataOrdered$Followers[fullDataOrdered$date==d1])/fullDataOrdered$Followers[fullDataOrdered$date==d1]
-# change <- (fullDataOrdered$Followers[fullDataOrdered$date==d2]-fullDataOrdered$Followers[fullDataOrdered$date==d1])
-# avgChange <- 
-# 
-# followerFirst <- fullDataOrdered$Followers[fullDataOrdered$date==d1]
 
-# g <- data.frame(change=pChangeFirst, followers=followerFirst)
-# g2 <- data.frame(change=change, followers=followerFirst)
 
 library(ggplot2)
 ggplot(data=graphDF, aes(x=followers,y=change))+
@@ -175,10 +160,12 @@ pdf('Clusters.pdf',paper = 'USr',width = 11,height=8.5)
 fviz_cluster(k, data=graphDF)
 dev.off()
 
+# Clusters from low to high number of followers are: 3<1<2<4
+
 c <- k$cluster
 
 df <- data.frame(Account=names(c),Cluster=c)
-# write.csv(df, file="\AccountClusters.csv")
+write.csv(df, file="AccountClusters.csv")
 
 merged <- merge(fullDataOrdered, df, by='Account', all.x = TRUE)
 stopifnot(nrow(fullDataOrdered)==nrow(merged))
