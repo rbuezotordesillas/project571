@@ -7,3 +7,5 @@ data collection/Data/ModelData/Followers/*
 data collection/Data/ModelData/Tweets/*
 *.png
 *.txt
+.Rhistory
+-checkpoint.ipynb
