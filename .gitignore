@@ -1,2 +1,9 @@
 *.json
 passwords.txt
+data collection/Data/Jose/*
+data collection/Data/Carlota/*
+data collection/Data/ModelData/byDate/*
+data collection/Data/ModelData/Followers/*
+data collection/Data/ModelData/Tweets/*
+*.png
+*.txt
