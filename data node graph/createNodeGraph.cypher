@@ -1,29 +1,32 @@
-WITH "file:///Users/Raquel/Desktop/tweetJSON/BBC_Travel.json" AS url
+# Delete a node and all its relationships
+MATCH (n)
+DETACH DELETE n
+
+
+WITH "file:///Users/Raquel/Desktop/tweetJSON/byCategory/News.json" AS url
 CALL apoc.load.json(url) YIELD value as t
 MERGE (tweet:Tweet {id:t.id})
 MERGE (user:User {accountName:t.user.screen_name})
 MERGE (user)-[:POSTS]->(tweet)
 FOREACH (h IN t.entities.hashtags |
-	MERGE (tag:Hashtag {ht: LOWER(h.text)})
+	MERGE (tag:Hashtag {HT: LOWER(h.text)})
     MERGE (tag)-[:TAGS]->(tweet))
 FOREACH (l IN t.entities.urls |
-	MERGE (link:Links {url: LOWER(l.display_url)})
+	MERGE (link:Link {url: LOWER(l.display_url)})
     MERGE (tweet)-[:CONTAINS]->(link))
 FOREACH (m IN t.entities.user_mentions |
 	MERGE (mentionedUser:User {accountName: (m.screen_name)})
     MERGE (tweet)-[:MENTIONS]->(mentionedUser))
 
 
+CREATE INDEX ON :Tweet(id);
+CREATE INDEX ON :User(accountName);
+CREATE INDEX ON :Hashtag(HT);
+CREATE INDEX ON :Link(url);
 
 
-head = []
-with open("result.json", "w") as outfile:
-    for f in file_list:
-        with open(f, 'rb') as infile:
-            file_data = json.load(infile)
-            head += file_data
-    json.dump(head, outfile)
 
+# 1st i had to do something with dbms. ....
 
 WITH "file:///Users/Raquel/Desktop/todaysTweets_2018-04-20.json" AS url
 CALL apoc.load.json(url) YIELD value as tweets
@@ -76,3 +79,22 @@ MATCH (h:Hashtag {HT: row.Hashtags})
 MERGE (h)-[:TAGS]->(t);
 
 
+# graphs
+
+MATCH (t:Tweet)
+WITH t ORDER BY t.id DESC LIMIT 2000
+MATCH r1=(user:User)-[:POSTS]->(t)<-[:TAGS]-(tag:Hashtag) WHERE user.accountName IN ['CNN', 'BBCWorld', 'NBCNews','nytimes','ABC','FoxNews']
+MATCH r2=(t)-[:MENTIONS]->(user2:User)  
+RETURN r1,r2
+
+MATCH (t:Tweet)
+WITH t ORDER BY t.id DESC LIMIT 2000
+MATCH r1=(user:User)-[:POSTS]->(t)<-[:TAGS]-(tag:Hashtag) WHERE user.accountName IN ['el_pais', 'abc_es', 'antena3com','noticias_cuatro','24h_tve']
+MATCH r2=(t)-[:MENTIONS]->(user2:User)  
+RETURN r1,r2
+
+MATCH (t:Tweet)
+WITH t ORDER BY t.id DESC LIMIT 2000
+MATCH r1=(user:User)-[:POSTS]->(t)-[:CONTAINS]->(link:Link) WHERE user.accountName IN ['CNN', 'BBCWorld', 'NBCNews','nytimes','ABC','FoxNews']
+MATCH r2=(t)-[:MENTIONS]->(user2:User)  
+RETURN r1,r2

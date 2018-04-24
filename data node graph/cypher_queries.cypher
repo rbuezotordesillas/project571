@@ -14,6 +14,7 @@ USING PERIODIC COMMIT
 LOAD CSV WITH HEADERS FROM "file:///Mentions.csv" AS row
 CREATE (:MentionedUser {name: row.Mentions});
 
+CREATE INDEX ON :Tweet(id);
 CREATE INDEX ON :User(accountName);
 CREATE INDEX ON :Hashtag(HT);
 CREATE INDEX ON :Link(url);
