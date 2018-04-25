@@ -1,4 +1,4 @@
-# Presentation queries
+# PRESENTATION QUERIES
 
 # Change config for node displays
 
@@ -35,7 +35,7 @@ FOREACH (m IN t.entities.user_mentions |
 # Graph ALL
 
 MATCH (t:Tweet)
-WITH t ORDER BY t.id DESC LIMIT 2000	 # Can be taken off
+WITH t ORDER BY t.id DESC LIMIT 2000	 # Can be taken off, but I get different results?
 MATCH r1= (user:User)-[:POSTS]->(t)
 MATCH r2= (t)<-[:TAGS]-(tag:Hashtag)
 MATCH r3= (t)-[:MENTIONS]->(user2:Mentioned)  
@@ -77,5 +77,25 @@ ORDER BY Count DESC
 MATCH (u:User{category:'Fashion'})-[:POSTS]->()<-[t:TAGS]-(h:Hashtag)
 RETURN h.HT as HASHTAG,count(t) as COUNT
 ORDER BY COUNT DESC
+
+# graph some: do for metoo, westworld, earthday, diadelatierra or díadelatierra
+
+MATCH p=()-[:POSTS]->()<-[:TAGS]-(h:Hashtag{HT:'metoo'})
+RETURN p
+
+MATCH p=()-[:POSTS]->()<-[:TAGS]-(h:Hashtag) WHERE h.HT IN ['diadelatierra','díadelatierra']
+RETURN p
+
+
+## Mentioned Users analysis
+
+# Most mentioned
+MATCH ()-[m:MENTIONS]->(mu:Mentioned)
+RETURN mu.accountName as Mentioned_User,count(m) as COUNT
+ORDER BY COUNT DESC
+
+# graph most mentionedUser
+MATCH p= ()-[:POSTS]->()-[m:MENTIONS]->(mu:Mentioned{accountName:'MasterChef_es'})
+RETURN p
 
 
