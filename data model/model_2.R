@@ -1,11 +1,12 @@
 #setwd("C:/Users/Carru/SoftwareRepositories/project571/data model")
-data<-read.csv('../data collection/Data/ModelData/modelData.csv', header=T, sep=";", na.strings='Null', stringsAsFactors = F)
+data<-read.csv('../data collection/Data/ModelData/modelData2.csv', header=T, sep=";", na.strings='Null', stringsAsFactors = F)
 
 ###TODO: SET SEED AS A GLOBAL VARIABLE!!!
 
 #We start observing the data
 index<-which(complete.cases(data)==FALSE)
 #data[index, ]
+#unique(data[index, "Account"])
 #There are 3 accounts that stopped tweeting for a period of time/stopped functioning
 #TODO: discuss what to do with these accounts
 
@@ -24,7 +25,6 @@ followers<- read.csv('../data collection/Data/ModelData/historicFollowers.csv',h
 data[, "change_followers"]<-0
 data$change_followers[which(data$date=="2018-02-24")]<-(data$Followers[which(data$date=="2018-02-24")]-followers$X2018.02.23)/followers$X2018.02.23
 
-#TODO: change this when we have all the data
 startday <-  data$date[1]
 endday <- data$date[nrow(data)]
 
@@ -47,9 +47,10 @@ i<-which((data$Account=="sportbible")|(data$Account=="fabulousanimals")|(data$Ac
 cat('The percentage of removed data is:', (length(i)/dim(data)[1])*100, '\n') #So we can delete them
 data_clean<-data[-i, ]
 
+
 #We introduce another column that partitions the accounts into groups depending on their size
 clusterpartition<-read.csv('../data exploration/AccountClusters.csv', header=T, stringsAsFactors = F, sep=',', na.strings='Null')
-clusterpartition$X<-NULL
+clusterpartition<-clusterpartition[,c("Account", "Cluster")]
 
 library('sqldf')
 sqlStr<-'SELECT *
@@ -69,7 +70,10 @@ data_clean$logic_change<-as.logical(data_clean$logic_change)
 #Scaling the attribute Followers
 #data_clean$Followers<-scale(data_clean$Followers)
 
-#-----------------------------------------------------------------------------------------------
+# sqlStr<-'SELECT * FROM data_clean WHERE data_clean.Followers<200000'
+# new_data<-sqldf(sqlStr)
+
+#----------------------------------------------------------------------------------------------
 #Correlation between variables
 type<-function(a, funct){
   if(sum(sapply(a, funct))==0){
@@ -94,9 +98,10 @@ corrplot(corMatrix, method = 'number', diag = TRUE)
 
 #Spliting the data 
 
-#We are going to train on the 80% of the data, being this data the first 80% of the days we captured the data. The remaining 20% will be used as the test data.
-numberDays<-as.integer(endday-startday)
+#We are going to train on the first 80% of the data, the remaining 20% will be used as the test data.
+
 totalDays<-unique(data_clean$date)
+numberDays<-length(totalDays)
 lastTrain<-ceiling(0.8*numberDays)
 lastTrainDate<-totalDays[lastTrain]
 indexLast<-max(which(data_clean$date==lastTrainDate))
@@ -107,10 +112,12 @@ stopifnot(nrow(train)+nrow(test)==nrow(data_clean))
 
 cat('In the training data we have ', mean(train$logic_change)*100, '% of the followers increase\n')
 cat('In the test data we have ', mean(test$logic_change)*100, '% of the followers increase\n')
+#So we have more or less an even distribution
 
-#-----------------------------------------------------------------------------------------------
+#----------------------------------------------------------------------------------------------
   #MODELS
-#-----------------------------------------------------------------------------------------------
+#----------------------------------------------------------------------------------------------
+
 #Logistic Regression Model
   
 #We use stratified sampling to divide the data into training and test
@@ -135,7 +142,7 @@ createModelFormula <- function(targetVar, xVars, includeIntercept = TRUE){
 
 #TODO: Remove highly correlated variables?
 xVars<-numVar[-(which(numVar=="change_followers"))]
-xVars<-xVars[-(which(numVar=="Followers"))] #We remove Followers because it was highly correlated
+xVars<-xVars[-(which(numVar=="Followers"))] #We remove Followers
 xVars<-c(xVars, catVar)
 response<-logicVar
 modelForm <- createModelFormula(targetVar = response, xVars = xVars, includeIntercept = TRUE)
@@ -273,8 +280,7 @@ cat('The adjusted r squared is: ', summary(model)$adj.r.squared)
 pred<-predict(model, test)
 R_squared<-RsquaredLM(pred, test, targetVar)
 cat("The value of the R squared for the test is", R_squared, "\n")
-#We get an R_squared of 0.2077
-#change as percentage: 0.0184
+#change as percentage: -0.00834
 
 
 #From the p-values we see that we can remove the nTweets
@@ -421,7 +427,7 @@ anova(model, pol.reg2)
 #TODO: choose best coefficients looking at the p-value, automatically?¿
 #TODO: get only the numbers at the end of the name by using grepl put them in a dataframe 
 #& compare
-p<-summary(pol.reg4)$coefficients[,4]
+p<-summary(pol.reg2)$coefficients[,4]
 alpha<-0.05
 candidates<-p[p<alpha]
 
