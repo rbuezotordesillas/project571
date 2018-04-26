@@ -100,18 +100,18 @@ corrplot(corMatrix, method = 'number', diag = TRUE)
 
 #We are going to train on the first 80% of the data, the remaining 20% will be used as the test data.
 
-totalDays<-unique(data_clean$date)
-numberDays<-length(totalDays)
-lastTrain<-ceiling(0.8*numberDays)
-lastTrainDate<-totalDays[lastTrain]
-indexLast<-max(which(data_clean$date==lastTrainDate))
-
-train<-data_clean[1:indexLast, ]
-test<-data_clean[(indexLast+1):nrow(data_clean),]
-stopifnot(nrow(train)+nrow(test)==nrow(data_clean))
-
-cat('In the training data we have ', mean(train$logic_change)*100, '% of the followers increase\n')
-cat('In the test data we have ', mean(test$logic_change)*100, '% of the followers increase\n')
+# totalDays<-unique(data_clean$date)
+# numberDays<-length(totalDays)
+# lastTrain<-ceiling(0.8*numberDays)
+# lastTrainDate<-totalDays[lastTrain]
+# indexLast<-max(which(data_clean$date==lastTrainDate))
+# 
+# train<-data_clean[1:indexLast, ]
+# test<-data_clean[(indexLast+1):nrow(data_clean),]
+# stopifnot(nrow(train)+nrow(test)==nrow(data_clean))
+# 
+# cat('In the training data we have ', mean(train$logic_change)*100, '% of the followers increase\n')
+# cat('In the test data we have ', mean(test$logic_change)*100, '% of the followers increase\n')
 #So we have more or less an even distribution
 
 #----------------------------------------------------------------------------------------------
@@ -223,23 +223,28 @@ confusionMatrix(defaulted2, test$logic_change)
 #xVars<-c(xVars, "Followers") 
 targetVar <-  "change_followers"
 
+set.seed(1112)
 #We have to partition the data again, since now we have a different targetVar
-# inTrain <- createDataPartition(y = data_clean[,targetVar], list = FALSE, p = 0.8)
-# train <- data_clean[inTrain,]
-# test <- data_clean[-inTrain,]
-# stopifnot(nrow(train) + nrow(test) == nrow(data_clean))
-# sum(train$change_followers)/nrow(train)
-# sum(test$change_followers)/nrow(test)
+inTrain <- createDataPartition(y = data_clean[,targetVar], list = FALSE, p = 0.8)
+train <- data_clean[inTrain,]
+test <- data_clean[-inTrain,]
+stopifnot(nrow(train) + nrow(test) == nrow(data_clean))
+sum(train$change_followers)/nrow(train)
+sum(test$change_followers)/nrow(test)
 
 #Relationship between followers and change in followers (change in followers as in variation)
 simple_data<-data
 simple_data$change_followers[which(data$date=="2018-02-24")]<-simple_data$change_followers[which(data$date=="2018-02-24")]*followers$X2018.02.23
 simple_data$change_followers[simple_data$date>startday]<-simple_data$change_followers[simple_data$date>startday]*a1
-simple_data<-simple_data[-i, c('Followers', 'change_followers')]
+train2<-simple_data[simple_data$date=="2018-02-26",]
+test2<-simple_data[simple_data$date=="2018-02-27",]
+train2<-train2[, c('Followers', 'change_followers')]
+test2<-test2[, c('Followers', 'change_followers')]
 
-train2<-simple_data[1:indexLast,]
-test2<-data_clean[(indexLast+1):nrow(data_clean),]
-stopifnot(nrow(train2)+nrow(test2)==nrow(data_clean))
+
+# train2<-simple_data[1:indexLast,]
+# test2<-data_clean[(indexLast+1):nrow(data_clean),]
+# stopifnot(nrow(train2)+nrow(test2)==nrow(data_clean))
 
 modelFollower<-lm(change_followers~Followers, data=train2)
 summary(modelFollower)
@@ -258,7 +263,7 @@ RsquaredLM<-function(pred, test, targetVar){
 #TODO: check this, I get negative value (?)
 R_squaredF<-RsquaredLM(predFollower, test2, targetVar) 
 
-ggplot(simple_data, aes(x = Followers, y = change_followers))+ geom_point() + 
+ggplot(train2, aes(x = Followers, y = change_followers))+ geom_point() + 
   geom_abline(intercept=2.126e+02, slope=2.921e-04,color='red') + 
   ggtitle("Relation between Followers and change in followers") +
   theme(plot.title = element_text(hjust = 0.5)) +
@@ -443,7 +448,7 @@ pol.reg.pruned.pred<-predict(pol.reg.pruned, test)
 R_squared.pol.pruned<-RsquaredLM(pol.reg.pruned.pred, test, targetVar)
 cat("The value of the R squared for the test is", R_squared.pol.pruned, "\n")
 
-
+anova(model, lm.int, lmStep , pol.reg.pruned, pol.reg2)
 #TODO: regression splines, maybe exponential (if I have time)
 
 #------------------------------------------------------------------------------------------
@@ -451,6 +456,7 @@ cat("The value of the R squared for the test is", R_squared.pol.pruned, "\n")
 library(rpart)
 library(rpart.plot)
 
+set.seed(1112)
 reg.tree<-rpart(modelForm, data=train)
 summary(reg.tree)
 rpart.plot(reg.tree, type=4, digits=4 , main="Full Regression Tree")
@@ -462,6 +468,8 @@ reg.tree.pred<-predict(reg.tree, test)
 
 reg.mse<-mean((reg.tree.pred-test$change_followers)**2)
 cat('The mse of this model is: ', reg.mse, "\n")
+R<-RsquaredLM(reg.tree.pred, test, targetVar)
+
 #TODO: explanation
 #it leads to test predictions that are within 0.19% of the median percentage
 #TODO: makes sense to use R_squared?
