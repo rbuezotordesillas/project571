@@ -346,20 +346,3 @@ adjR<-RsquaredLM(reg.tree.pred, test, targetVar)
 cat('The adj R of this model is: ', adjR, "\n")
 #We get an adjusted R of 0.030
 
-
-
-#Random Forest
-
-library(randomForest)
-set.seed(1234)
-rf.tree<-randomForest(modelForm, data=train, ntreeTry = 500,importance=T)
-
-rf.pred<-predict(rf.tree, data=test)
-print(rf.tree)
-mtry<-tuneRF(x=train[,xVars], y=train[, targetVar], ntreeTry = 500, stepFactor = 1.5, improve=0.01, trace=TRUE, plot=TRUE)
-#Since mtry is still 2 which is what it is used to create the randomForest we don't have to create a new one
-
-adjR2<-RsquaredLM(rf.pred, test, targetVar)
-cat('The adj R of this model is: ', adjR2, "\n")
-#We get an adjusted R of 0.030
-
